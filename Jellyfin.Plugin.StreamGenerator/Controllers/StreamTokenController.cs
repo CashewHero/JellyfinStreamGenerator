@@ -15,8 +15,6 @@ public class StreamTokenController(
     IUserManager userManager)
     : ControllerBase
 {
-    private static readonly TimeSpan DefaultTokenDuration = TimeSpan.FromHours(24);
-
     [HttpGet("Settings")]
     [Authorize]
     public ActionResult<PluginSettings> GetSettings()
