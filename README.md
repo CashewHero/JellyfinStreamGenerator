@@ -16,6 +16,11 @@ Inspired by [vrchat-jellyfin](https://github.com/orcachillin/vrchat-jellyfin) bu
 
 ## Installation
 
+### Requirements
+
+- **Jellyfin File Transformation Plugin**: This plugin relies on [jellyfin-plugin-file-transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation). You must install it on your server first.
+
+
 ### Via Plugin Repository (recommended)
 
 1. In Jellyfin, go to **Dashboard → Plugins → Repositories**
@@ -32,29 +37,26 @@ Inspired by [vrchat-jellyfin](https://github.com/orcachillin/vrchat-jellyfin) bu
 2. Extract the zip into a new folder inside your Jellyfin server's `plugins` directory, e.g. `<Jellyfin Data Folder>/plugins/StreamGenerator/`
 3. Restart your Jellyfin Server
 
-### Requirements
-
-- **Jellyfin File Transformation Plugin**: This plugin relies on [jellyfin-plugin-file-transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation). You must install it on your server first.
-
 ## Versioning
 
 Plugin versions use the format `x.y.z.N`. The last digit (`N`) is the preview build number — `0` indicates a stable release.
 
 ## Features
-- Adds a new button next to "Copy Stream URL" for a video item  
+- Adds a new button "Generate Stream URL" for a video item  
   <img width="239" height="128" alt="image" src="https://github.com/user-attachments/assets/229c4263-4050-45ba-be9f-4decf36497ac" />
 - Provides a GUI popup with selectable options:
-  - Video Codec
-  - Audio Codec
-  - Audio Stream track selection
-  - Subtitle Stream track selection
+  - Video/Audio codec
+  - Audio/Subtitle stream track selection
   - Subtitle burning method (HLS, Encode, Embed)
   - Bitrate selection
-  - Copy Timestamps  
+  - Copy Timestamps
+  - etc  
   <img width="464" height="671" alt="image" src="https://github.com/user-attachments/assets/22661870-cbf6-4f8a-9ad9-189d3470529e" />
 - Generates a `master.m3u8` playlist URL mimicking an API call
 - Generates a unique token for each generated URL, without exposing your Jellyfin token  
   <img width="616" height="659" alt="image" src="https://github.com/user-attachments/assets/36785259-834f-4f92-94c0-d77eb898a777" />
+- Serves the already transcoded video parts if available to avoid unnecessary transcoding 
+
 ## Building from source
 ```bash
 dotnet build
