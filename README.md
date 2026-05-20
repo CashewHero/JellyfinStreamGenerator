@@ -14,11 +14,27 @@ This library provides the ability to generate custom HLS stream URLs with separa
 
 Inspired by [vrchat-jellyfin](https://github.com/orcachillin/vrchat-jellyfin) but implemented as a Jellyfin plugin.
 
-## Installation Requirements
-1. **Jellyfin File Transformation Plugin**: This plugin relies heavily on [jellyfin-plugin-file-transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation). You must install it on your server first.
-2. Download or compile the `Jellyfin.Plugin.StreamGenerator.dll`.
-3. Place the `.dll` into a new folder inside your Jellyfin server's `plugins` directory. e.g., `<Jellyfin Data Folder>/plugins/StreamGenerator/Jellyfin.Plugin.StreamGenerator.dll`.
-4. Restart your Jellyfin Server.
+## Installation
+
+### Via Plugin Repository (recommended)
+
+1. In Jellyfin, go to **Dashboard → Plugins → Repositories**
+2. Add a new repository with the URL:
+   ```
+   https://skproch.github.io/JellyfinStreamGenerator/manifest.json
+   ```
+3. Go to **Catalog**, find **Stream Generator** and install it
+4. Restart your Jellyfin Server
+
+### Manual Installation
+
+1. Download the latest plugin zip from [GitHub Releases](https://github.com/SKProCH/JellyfinStreamGenerator/releases)
+2. Extract the zip into a new folder inside your Jellyfin server's `plugins` directory, e.g. `<Jellyfin Data Folder>/plugins/StreamGenerator/`
+3. Restart your Jellyfin Server
+
+### Requirements
+
+- **Jellyfin File Transformation Plugin**: This plugin relies on [jellyfin-plugin-file-transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation). You must install it on your server first.
 
 ## Features
 - Adds a new button next to "Copy Stream URL" for a video item  
