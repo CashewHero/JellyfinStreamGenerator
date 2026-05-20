@@ -47,7 +47,6 @@ jobs:
           echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
 
           # Convert SemVer to JPRM-compatible 4-part version (x.y.z.build)
-          # e.g. "0.1.1-preview.2" -> "0.1.1.2", "1.0.0" -> "1.0.0.0"
           BASE=$(echo "$SEMVER" | sed 's/-.*//')
           PRERELEASE=$(echo "$SEMVER" | grep -oP '(?<=\.)\d+$' || true)
           if echo "$SEMVER" | grep -q '-'; then
@@ -85,40 +84,84 @@ jobs:
           path: ./release-assets
 
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: v${{ needs.build.outputs.semver }}
           files: ./release-assets/*
           generate_release_notes: true
+          prerelease: ${{ !startsWith(github.ref, 'refs/tags/v') }}
 
   publish-manifest:
     needs: [build, release]
-    if: github.event_name != 'pull_request' && always() && needs.build.result == 'success'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Download artifact
         uses: actions/download-artifact@v4
         with:
           name: build-artifact
           path: ./release-assets
 
-      - name: Install JPRM
-        run: pip install jprm
-
       - name: Build manifest
         run: |
           mkdir -p pages
+          PAGES_URL="https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}"
 
           # Download existing manifest from Pages (if exists)
-          curl -sSfL "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/manifest.json" -o pages/manifest.json || echo '[]' > pages/manifest.json
+          curl -sSfL "${PAGES_URL}/manifest.json" -o pages/manifest.json || echo '[]' > pages/manifest.json
 
-          # Add new version to manifest
-          for zip in ./release-assets/*.zip; do
-            jprm --verbosity=debug repo add --url="https://github.com/${{ github.repository }}/releases/download/v${{ needs.build.outputs.semver }}" pages "$zip"
-          done
+          # Determine zip filename and compute checksum
+          ZIP_FILE=$(ls ./release-assets/*.zip | head -1)
+          ZIP_NAME=$(basename "$ZIP_FILE")
+          CHECKSUM=$(md5sum "$ZIP_FILE" | awk '{print $1}')
+          VERSION="${{ needs.build.outputs.version }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SOURCE_URL="https://github.com/${{ github.repository }}/releases/download/v${{ needs.build.outputs.semver }}/${ZIP_NAME}"
+
+          # Read plugin metadata from build.yaml
+          GUID=$(grep '^guid:' build.yaml | awk '{print $2}' | tr -d '"')
+          NAME=$(grep '^name:' build.yaml | awk '{print $2}' | sed 's/^"//;s/"$//')
+          DESCRIPTION=$(grep '^overview:' build.yaml | sed 's/^overview: *//' | tr -d '"')
+          OVERVIEW="$DESCRIPTION"
+          OWNER=$(grep '^owner:' build.yaml | awk '{print $2}' | tr -d '"')
+          CATEGORY=$(grep '^category:' build.yaml | awk '{print $2}' | tr -d '"')
+          TARGET_ABI=$(grep '^targetAbi:' build.yaml | awk '{print $2}' | tr -d '"')
+
+          # Build new version entry
+          NEW_VERSION=$(jq -n \
+            --arg ver "$VERSION" \
+            --arg changelog "" \
+            --arg targetAbi "$TARGET_ABI" \
+            --arg sourceUrl "$SOURCE_URL" \
+            --arg checksum "$CHECKSUM" \
+            --arg timestamp "$TIMESTAMP" \
+            '{version: $ver, changelog: $changelog, targetAbi: $targetAbi, sourceUrl: $sourceUrl, checksum: $checksum, timestamp: $timestamp}')
+
+          # Update or create plugin entry in manifest
+          PLUGIN_EXISTS=$(jq --arg guid "$GUID" 'map(select(.guid == $guid)) | length' pages/manifest.json)
+
+          if [ "$PLUGIN_EXISTS" -gt "0" ]; then
+            # Append version to existing plugin entry
+            jq --arg guid "$GUID" --argjson newver "$NEW_VERSION" \
+              'map(if .guid == $guid then .versions += [$newver] else . end)' \
+              pages/manifest.json > pages/manifest_tmp.json
+          else
+            # Create new plugin entry
+            jq --arg guid "$GUID" --arg name "$NAME" --arg description "$DESCRIPTION" \
+              --arg overview "$OVERVIEW" --arg owner "$OWNER" --arg category "$CATEGORY" \
+              --argjson newver "$NEW_VERSION" \
+              '. += [{"guid": $guid, "name": $name, "description": $description, "overview": $overview, "owner": $owner, "category": $category, "versions": [$newver]}]' \
+              pages/manifest.json > pages/manifest_tmp.json
+          fi
+
+          mv pages/manifest_tmp.json pages/manifest.json
+          echo "Final manifest:"
+          cat pages/manifest.json
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
