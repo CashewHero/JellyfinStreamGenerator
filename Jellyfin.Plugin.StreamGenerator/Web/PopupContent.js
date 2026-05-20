@@ -322,7 +322,7 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
 
             const buildUrl = function (apiKey) {
                 const queryParams = new URLSearchParams({
-                    deviceId: deviceId,
+                    deviceId: 'stream_generator',
                     playSessionId: 'stream_generator_random',
                     api_key: apiKey,
                     mediaSourceId: mediaSource.Id,

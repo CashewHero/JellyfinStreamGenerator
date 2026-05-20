@@ -54,13 +54,17 @@ public partial class CustomStreamTokensAuthorizationContext(
         var user = userManager.GetUserById(token.UserId);
         if (user is null) return null;
 
+        var deviceId = request.Query.TryGetValue("deviceId", out var queryDeviceId) && !string.IsNullOrEmpty(queryDeviceId.ToString())
+            ? queryDeviceId.ToString()
+            : $"StreamGenerator-{apiKey}";
+
         return Task.FromResult(new AuthorizationInfo
         {
             IsAuthenticated = true,
             User = user,
             Token = apiKey!,
             IsApiKey = true,
-            DeviceId = $"StreamGenerator-{apiKey}",
+            DeviceId = deviceId,
             Device = "StreamGenerator",
             Client = "StreamGenerator",
         });
