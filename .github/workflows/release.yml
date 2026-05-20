@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      semver: ${{ steps.version.outputs.semver }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,9 +43,20 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          VERSION=$(minver -t v -p preview -v error)
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
-          echo "Resolved version: ${VERSION}"
+          SEMVER=$(minver -t v -p preview -v error)
+          echo "semver=${SEMVER}" >> $GITHUB_OUTPUT
+
+          # Convert SemVer to JPRM-compatible 4-part version (x.y.z.build)
+          # e.g. "0.1.1-preview.2" -> "0.1.1.2", "1.0.0" -> "1.0.0.0"
+          BASE=$(echo "$SEMVER" | sed 's/-.*//')
+          PRERELEASE=$(echo "$SEMVER" | grep -oP '(?<=\.)\d+$' || true)
+          if echo "$SEMVER" | grep -q '-'; then
+            JPRM_VERSION="${BASE}.${PRERELEASE:-0}"
+          else
+            JPRM_VERSION="${BASE}.0"
+          fi
+          echo "version=${JPRM_VERSION}" >> $GITHUB_OUTPUT
+          echo "Resolved: semver=${SEMVER}, jprm=${JPRM_VERSION}"
 
       - name: Build Jellyfin Plugin
         uses: oddstr13/jellyfin-plugin-repository-manager@v1.1.1
@@ -105,7 +117,7 @@ jobs:
 
           # Add new version to manifest
           for zip in ./release-assets/*.zip; do
-            jprm --verbosity=debug repo add --url="https://github.com/${{ github.repository }}/releases/download/v${{ needs.build.outputs.version }}" pages "$zip"
+            jprm --verbosity=debug repo add --url="https://github.com/${{ github.repository }}/releases/download/v${{ needs.build.outputs.semver }}" pages "$zip"
           done
 
       - name: Upload Pages artifact
