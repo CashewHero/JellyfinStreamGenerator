@@ -36,6 +36,10 @@ Inspired by [vrchat-jellyfin](https://github.com/orcachillin/vrchat-jellyfin) bu
 
 - **Jellyfin File Transformation Plugin**: This plugin relies on [jellyfin-plugin-file-transformation](https://github.com/IAmParadox27/jellyfin-plugin-file-transformation). You must install it on your server first.
 
+## Versioning
+
+Plugin versions use the format `x.y.z.N`. The last digit (`N`) is the preview build number — `0` indicates a stable release.
+
 ## Features
 - Adds a new button next to "Copy Stream URL" for a video item  
   <img width="239" height="128" alt="image" src="https://github.com/user-attachments/assets/229c4263-4050-45ba-be9f-4decf36497ac" />
