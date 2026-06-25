@@ -233,15 +233,15 @@ public class StreamGeneratorPlugin : BasePlugin<PluginConfiguration>, IHasWebPag
         {
             var generateStreamObj = @"{name:""Generate Stream URL"",id:""generate-stream"",icon:""link""}";
 
-            // Prefer Jellyfin's playable media branch so the command does not depend on download permission.
-            var regexContext = new Regex(@"(c=[^,]+\.canPlay\(i\),d=\[\],)").Replace(
+            // Use Copy Stream URL as a placement landmark, but add the command as its own push.
+            var regexContext = Regex.Replace(
                 payload.Contents,
-                $"${{1}}c&&\"Photo\"!==i.MediaType&&d.push({generateStreamObj}),",
-                1);
+                @"(id:""copy-stream"",icon:""content_copy""\}\)\)\),)",
+                $"${{1}}c&&\"Photo\"!==i.MediaType&&d.push({generateStreamObj}),"
+            );
 
             if (regexContext == payload.Contents)
             {
-                // Older web bundles exposed the right anchor through the Copy Stream URL command.
                 regexContext = Regex.Replace(
                     payload.Contents,
                     @"(id:""copy-stream"",icon:""content_copy""\})",
