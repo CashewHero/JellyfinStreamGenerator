@@ -231,15 +231,23 @@ public class StreamGeneratorPlugin : BasePlugin<PluginConfiguration>, IHasWebPag
 
         try
         {
-            var generateStreamObj = @",{name:""Generate Stream URL"",id:""generate-stream"",icon:""link""}";
+            var generateStreamObj = @"{name:""Generate Stream URL"",id:""generate-stream"",icon:""link""}";
 
-            // Make sure the replacement strings don't contain any newlines or indentation that breaks "use strict"; minified structure
-            // We append our object right after the "copy-stream" object, effectively passing it as a second argument to .push() or next element in an array.
-            var regexContext = Regex.Replace(
+            // Prefer the playable video branch so the command does not depend on Jellyfin's download permission.
+            var regexContext = new Regex(@"(c=[^,]+\.canPlay\(i\),d=\[\],)").Replace(
                 payload.Contents,
-                @"(id:""copy-stream"",icon:""content_copy""\})",
-                $"$1{generateStreamObj}"
-            );
+                $"${{1}}c&&\"Video\"===i.MediaType&&d.push({generateStreamObj}),",
+                1);
+
+            if (regexContext == payload.Contents)
+            {
+                // Older web bundles exposed the right anchor through the Copy Stream URL command.
+                regexContext = Regex.Replace(
+                    payload.Contents,
+                    @"(id:""copy-stream"",icon:""content_copy""\})",
+                    $"${{1}},{generateStreamObj}"
+                );
+            }
 
             var generateStreamCase = @"case""generate-stream"":if(window.showStreamGeneratorPopup){window.showStreamGeneratorPopup(c,u)}else{console.error(""StreamGenerator popup script not loaded!"")}try{k(l,t)()}catch(e){console.error(""StreamGenerator: Error calling getResolveFunction"",e)}break;";
 
