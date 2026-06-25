@@ -10,7 +10,7 @@ description: >
   Integrates with the FileTransformation plugin to add a context menu option
   for generating and copying stream URLs.
 category: "General"
-owner: "SKProCH"
+owner: "CashewHero"
 artifacts:
   - "Jellyfin.Plugin.StreamGenerator.dll"
   - "Newtonsoft.Json.dll"

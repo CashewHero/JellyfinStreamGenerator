@@ -1,3 +1,35 @@
+[link-upstream]: https://github.com/SKProCH/JellyfinStreamGenerator
+[link-file-transformation]: https://github.com/IAmParadox27/jellyfin-plugin-file-transformation
+
+# Jellyfin Stream Generator Plugin Fork
+
+> This is a fork that tries to fix and improve the [original plugin][link-upstream].
+
+## Installation
+1. Add [File Transformation Plugin][link-file-transformation] as a plugin source repository on your Jellyfin server:
+```
+https://www.iamparadox.dev/jellyfin/plugins/manifest.json
+```
+2. Add this plugin's repository:
+```
+https://cashewhero.github.io/JellyfinStreamGenerator/manifest.json
+```
+3. Install both `File Transformation` and `Stream Generator` plugins from the catalog and restart your server.
+
+## What this fork changes
+
+- Publish pipeline for this fork to its own repository manifest, so you can install it without having to build it yourself.
+
+
+
+
+<br><br><br><br>
+
+---
+
+> 📄 **Original README** — everything below is from the upstream project
+> [SKProCH/JellyfinStreamGenerator][link-upstream]
+
 # Jellyfin Stream Generator Plugin
 
 This plugin for Jellyfin adds a "Generate Stream URL" option to the context menu of video items.  

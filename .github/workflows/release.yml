@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - test
     tags:
       - 'v*'
     paths:
@@ -147,14 +148,18 @@ jobs:
           TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
           SOURCE_URL="https://github.com/${{ github.repository }}/releases/download/v${{ needs.build.outputs.semver }}/${ZIP_NAME}"
 
-          # Read plugin metadata from build.yaml
-          GUID=$(grep '^guid:' build.yaml | awk '{print $2}' | tr -d '"')
-          NAME=$(grep '^name:' build.yaml | awk '{print $2}' | sed 's/^"//;s/"$//')
-          DESCRIPTION=$(grep '^overview:' build.yaml | sed 's/^overview: *//' | tr -d '"')
+          # Read a top-level scalar from build.yaml, trimming whitespace and surrounding
+          # quotes. Using awk '{print $2}' breaks on quoted multi-word values such as
+          # name: "Stream Generator" (it would yield just "Stream").
+          yaml_get() { grep "^$1:" build.yaml | head -1 | sed -E "s/^$1:[[:space:]]*//; s/^\"//; s/\"$//"; }
+
+          GUID=$(yaml_get guid)
+          NAME=$(yaml_get name)
+          DESCRIPTION=$(yaml_get overview)
           OVERVIEW="$DESCRIPTION"
-          OWNER=$(grep '^owner:' build.yaml | awk '{print $2}' | tr -d '"')
-          CATEGORY=$(grep '^category:' build.yaml | awk '{print $2}' | tr -d '"')
-          TARGET_ABI=$(grep '^targetAbi:' build.yaml | awk '{print $2}' | tr -d '"')
+          OWNER=$(yaml_get owner)
+          CATEGORY=$(yaml_get category)
+          TARGET_ABI=$(yaml_get targetAbi)
 
           # Build new version entry with changelog from release notes
           NEW_VERSION=$(jq -n \
@@ -170,9 +175,15 @@ jobs:
           PLUGIN_EXISTS=$(jq --arg guid "$GUID" 'map(select(.guid == $guid)) | length' pages/manifest.json)
 
           if [ "$PLUGIN_EXISTS" -gt "0" ]; then
-            # Append version to existing plugin entry
-            jq --arg guid "$GUID" --argjson newver "$NEW_VERSION" \
-              'map(if .guid == $guid then .versions += [$newver] else . end)' \
+            # Refresh metadata from build.yaml and append the new version, so changes to
+            # name/owner/etc. propagate to an already-published manifest entry.
+            jq --arg guid "$GUID" --arg name "$NAME" --arg description "$DESCRIPTION" \
+              --arg overview "$OVERVIEW" --arg owner "$OWNER" --arg category "$CATEGORY" \
+              --argjson newver "$NEW_VERSION" \
+              'map(if .guid == $guid then
+                  .name = $name | .description = $description | .overview = $overview |
+                  .owner = $owner | .category = $category | .versions += [$newver]
+                else . end)' \
               pages/manifest.json > pages/manifest_tmp.json
           else
             # Create new plugin entry
@@ -185,6 +196,52 @@ jobs:
 
           mv pages/manifest_tmp.json pages/manifest.json
           echo "Final manifest:"
+          cat pages/manifest.json
+
+      # Post-processingon on pages/manifest.json produced by previous step. Kept as separate step so no line-overlap with upstream to stay merge-clean.
+      # Prune dead releases, Prune dead releases, Cap history to 10 per channel.
+      - name: Normalize manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Collect every valid release-asset download URL for this repo. The manifest
+          # is self-referential (rebuilt from its published copy each run), so without
+          # this a version stays advertised forever even after its GitHub Release is
+          # deleted, leaving a dead sourceUrl that breaks client installs.
+          if gh api "repos/${{ github.repository }}/releases" \
+               --paginate --jq '.[].assets[].browser_download_url' > valid_urls.txt 2>/dev/null; then
+            PRUNE=1
+          else
+            echo "WARNING: could not fetch release list; skipping dead-release pruning."
+            : > valid_urls.txt
+            PRUNE=0
+          fi
+          jq -Rs 'split("\n") | map(select(length > 0))' valid_urls.txt > valid_urls.json
+
+          # Per plugin: drop versions whose release no longer exists, collapse duplicate
+          # version strings (keeping the most recent), then keep only the 10 newest builds
+          # per channel. With the x.y.z.build version scheme a tagged stable release has
+          # build component 0, while a prerelease has build > 0 -- so grouping on
+          # "build == 0" keeps stable and prerelease histories capped independently
+          # (10 previews can't evict your stable releases).
+          jq --argjson validUrls "$(cat valid_urls.json)" --argjson prune "$PRUNE" '
+            def vkey: (.version | split(".") | map(tonumber));
+            def channel: if (.version | split(".") | .[3] // "0") == "0" then "stable" else "prerelease" end;
+            map(
+              .versions = (
+                .versions
+                | (if $prune == 1 then map(select(.sourceUrl as $u | $validUrls | index($u))) else . end)
+                | (reduce .[] as $v ({}; .[$v.version] = $v) | [ .[] ])
+                | group_by(channel)
+                | (map(sort_by(vkey) | reverse | .[0:10]) | add // [])
+                | sort_by(vkey) | reverse
+              )
+            )
+            | map(select(.versions | length > 0))
+          ' pages/manifest.json > pages/manifest_norm.json
+          mv pages/manifest_norm.json pages/manifest.json
+
+          echo "Normalized manifest:"
           cat pages/manifest.json
 
       - name: Upload Pages artifact
