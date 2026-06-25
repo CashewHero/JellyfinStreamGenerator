@@ -233,10 +233,10 @@ public class StreamGeneratorPlugin : BasePlugin<PluginConfiguration>, IHasWebPag
         {
             var generateStreamObj = @"{name:""Generate Stream URL"",id:""generate-stream"",icon:""link""}";
 
-            // Prefer the playable video branch so the command does not depend on Jellyfin's download permission.
+            // Prefer Jellyfin's playable media branch so the command does not depend on download permission.
             var regexContext = new Regex(@"(c=[^,]+\.canPlay\(i\),d=\[\],)").Replace(
                 payload.Contents,
-                $"${{1}}c&&\"Video\"===i.MediaType&&d.push({generateStreamObj}),",
+                $"${{1}}c&&\"Photo\"!==i.MediaType&&d.push({generateStreamObj}),",
                 1);
 
             if (regexContext == payload.Contents)
