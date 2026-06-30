@@ -54,11 +54,13 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
         return filtered;
     };
 
-    const generateCodecCheckboxesHtml = function (codecs, inputName, checkboxLabelStyle) {
+    const generateCodecCheckboxesHtml = function (codecs, inputName, checkboxLabelStyle, defaultCheckedCodecs) {
         let html = '';
+        const checkedCodecs = (defaultCheckedCodecs || codecs).map(c => c.toLowerCase());
         codecs.forEach(codec => {
             const label = codec.toUpperCase();
-            html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="' + inputName + '" value="' + codec + '" checked style="margin-right: 5px;">' + label + '</label>';
+            const checked = checkedCodecs.includes(codec.toLowerCase()) ? ' checked' : '';
+            html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="' + inputName + '" value="' + codec + '"' + checked + ' style="margin-right: 5px;">' + label + '</label>';
         });
         return html;
     };
@@ -83,7 +85,7 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
         /* Filter Video Codecs */
         const sourceVideoCodecs = (mediaSource.MediaStreams || []).filter(s => s.Type === 'Video').map(s => s.Codec).filter(Boolean);
         const videoCodecs = getFilteredCodecs(sourceVideoCodecs, encodingOptions.TranscodingVideoCodecs || [], ['h264', 'hevc', 'av1', 'vp9'], 'h264');
-        const videoCodecsHtml = generateCodecCheckboxesHtml(videoCodecs, 'videoCodec', checkboxLabelStyle);
+        const videoCodecsHtml = generateCodecCheckboxesHtml(videoCodecs, 'videoCodec', checkboxLabelStyle, ['h264']);
 
         let maxBitrate = 140000000; // Default large number (140 Mbps)
         if (mediaSource.Bitrate) {
@@ -170,12 +172,13 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
         html += '<label>Audio Codecs</label>';
         html += '<div style="' + checkboxContainerStyle + '">';
         html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="audioCodec" value="aac" checked style="margin-right: 5px;">AAC</label>';
-        html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="audioCodec" value="opus" checked style="margin-right: 5px;">OPUS</label>';
-        html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="audioCodec" value="flac" checked style="margin-right: 5px;">FLAC</label>';
+        html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="audioCodec" value="opus" style="margin-right: 5px;">OPUS</label>';
+        html += '<label style="' + checkboxLabelStyle + '"><input type="checkbox" name="audioCodec" value="flac" style="margin-right: 5px;">FLAC</label>';
         html += '</div>';
 
         const maxBitrateMbps = Math.max(1, Math.ceil(maxBitrate / 1000000));
         const sliderMax = Math.max(140, maxBitrateMbps); // Ensure slider can reach the item's bitrate if it's > 140
+        const defaultVideoBitrateMbps = Math.min(8, sliderMax);
 
         html += '<label>Audio Stream<br>';
         html += '<select id="audioStreamIndex" style="' + selectStyle + '">';
@@ -233,10 +236,10 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
 
         html += '<label>Subtitle Method<br>';
         html += '<select id="subtitleMethod" style="' + selectStyle + '">';
-        html += '<option value="Hls" selected>HLS</option>';
+        html += '<option value="Hls">HLS</option>';
         html += '<option value="Encode">Burn In (Encode)</option>';
         html += '<option value="Embed">Embed</option>';
-        html += '<option value="Drop">Drop</option>';
+        html += '<option value="Drop" selected>Drop</option>';
         html += '</select></label>';
 
         html += '<details style="margin-bottom: 15px; background: #333; padding: 10px; border-radius: 4px; border: 1px solid #444;">';
@@ -247,11 +250,11 @@ var showStreamGeneratorPopup = function (itemId, serverId) {
         html += durationOptionsHtml;
         html += '</select></label>';
 
-        html += '<label style="display: block; margin-top: 15px;">Max Video Bitrate: <span id="bitrateDisplay">' + sliderMax + '</span> Mbps<br>';
-        html += '<input type="range" id="maxVideoBitrate" style="' + selectStyle + ' cursor: pointer; margin-bottom: 0;" min="1" max="' + sliderMax + '" value="' + sliderMax + '"></label>';
+        html += '<label style="display: block; margin-top: 15px;">Max Video Bitrate: <span id="bitrateDisplay">' + defaultVideoBitrateMbps + '</span> Mbps<br>';
+        html += '<input type="range" id="maxVideoBitrate" style="' + selectStyle + ' cursor: pointer; margin-bottom: 0;" min="1" max="' + sliderMax + '" value="' + defaultVideoBitrateMbps + '"></label>';
 
         html += '<label style="display: flex; align-items: center; margin-top: 15px; cursor: pointer;">';
-        html += '<input type="checkbox" id="copyTimestamps" style="margin-right: 8px;" checked />';
+        html += '<input type="checkbox" id="copyTimestamps" style="margin-right: 8px;" />';
         html += '<span>Copy Timestamps</span>';
         html += '</label>';
         html += '</details>';
